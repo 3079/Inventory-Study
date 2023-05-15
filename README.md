@@ -1,1 +1,1 @@
-# Inventory-Study
+This project is my attempt at recreating an inventory system from the game Gloomwood, which is heavily inspired by Arx Fatalis's physics based drag & drop inventory system and the inventory-tetris system from Resident Evil and the like
