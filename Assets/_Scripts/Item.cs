@@ -9,7 +9,11 @@ public class Item : MonoBehaviour
     public int _inventoryHeight;
     [SerializeField] private float _inventoryScaleFactor;
 
-    void OnEnterInventorySpace()
+    public void OnGrabbed()
+    {
+        // transform.rotation = Quaternion.identity;
+    }
+    public void OnEnterInventorySpace()
     {
         transform.rotation = Quaternion.identity;
         var scale = transform.localScale;
@@ -17,7 +21,7 @@ public class Item : MonoBehaviour
         transform.localScale = scale;
     }
     
-    void OnExitInventorySpace()
+    public void OnExitInventorySpace()
     {
         var scale = transform.localScale;
         scale /= _inventoryScaleFactor;

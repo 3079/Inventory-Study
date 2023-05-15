@@ -83,13 +83,15 @@ public class Inventory : MonoBehaviour, IInteractable
     [SerializeField] private int _width;
     [SerializeField] private int _height;
     [SerializeField] private float _cellSize;
+    public float CellSize => _cellSize;
     [SerializeField] private Vector2 _anchor;
     [SerializeField] private Transform _gridParent;
+    public Transform GridParent => _gridParent;
     [SerializeField] private bool _debug;
     [SerializeField] private GameObject _gridCell;
      
-    private GridObject<InventoryCell> _grid;
-    private List<InventoryCell> _cells;
+    public GridObject<InventoryCell> _grid { get; private set; }
+    // private List<InventoryCell> _cells;
 
     public event Action OnOpenInventory;
     public event Action OnCloseInventory;
@@ -120,7 +122,7 @@ public class Inventory : MonoBehaviour, IInteractable
         var gridLayoutGroup = _menu.GetComponentInChildren<GridLayoutGroup>();
         gridLayoutGroup.cellSize = Vector2.one * _cellSize;
         gridLayoutGroup.constraintCount = _width;
-        _cells = new List<InventoryCell>();
+        // _cells = new List<InventoryCell>();
         
         for (int x = 0; x < _width; x++)
         {
@@ -130,7 +132,7 @@ public class Inventory : MonoBehaviour, IInteractable
                 var cell = Instantiate(_panelPrefab, gridLayoutGroup.transform.position, gridLayoutGroup.transform.rotation, gridLayoutGroup.transform);
                 var inventoryCell = cell.GetComponent<InventoryCell>();
                 _grid.SetObject(x, y, inventoryCell);
-                _cells.Add(inventoryCell);
+                // _cells.Add(inventoryCell);
             }
         }
     }
@@ -177,9 +179,18 @@ public class Inventory : MonoBehaviour, IInteractable
         Gizmos.DrawLine(TL, BL);
     }
 
+    public InventoryCell GetCellAtWorldPos(Vector3 worldPos)
+    {
+        // int x, y;
+        // _grid.GetXY(worldPos, out x, out y);
+        // Debug.Log("Hit cell at coordinates (" + x +", " + y + ")");
+        return _grid.GetObject(worldPos);
+        // return _grid.GetObject(x, y);
+    }
+
     public void SetItemColor(Item item, InventoryCell.ColorType color)
     {
-        foreach (var cell in _cells)
+        foreach (var cell in _grid.ToList())
         {
             if (cell._storedItem == item)
                 cell.SetColor(color);

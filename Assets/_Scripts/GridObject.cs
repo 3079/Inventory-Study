@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Xml.Linq;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -12,6 +13,8 @@ public class GridObject<T>
     private float _cellSize;
     private Vector2 _anchor;
     private Transform _transform;
+    private Vector3 _up;
+    private Vector3 _right;
     private bool _debug;
 
     private T[,] _items;
@@ -27,6 +30,8 @@ public class GridObject<T>
         _cellSize = cellSize;
         _anchor = anchor;
         _transform = transform;
+        _right = _transform.right;
+        _up = _transform.up;
         _items = new T[width, height];
         _debug = debug;
         if (debug) OnDebug();
@@ -52,34 +57,47 @@ public class GridObject<T>
                           - _anchor.x * _gridWidth * _transform.right
                           - _anchor.y * _gridHeight * _transform.up;
 
-    public Vector3 PointWorldPosition(int x, int y, OffsetType offsetType = OffsetType.BOTTOM_LEFT)
+    public Vector2 Offset(OffsetType offsetType = OffsetType.BOTTOM_LEFT)
     {
-        var right = _transform.right;
-        var up = _transform.up;
-        
         Vector2 offset = offsetType switch
         {
-            OffsetType.CENTER => (up + right) * 0.5f,
+            OffsetType.CENTER => (_up + _right) * 0.5f,
             OffsetType.BOTTOM_LEFT => Vector2.zero,
-            OffsetType.BOTTOM_RIGHT => right,
-            OffsetType.TOP_RIGHT => up + right,
-            OffsetType.TOP_LEFT => up,
+            OffsetType.BOTTOM_RIGHT => _right,
+            OffsetType.TOP_RIGHT => _up + _right,
+            OffsetType.TOP_LEFT => _up,
             _ => Vector2.zero
         };
+
+        return offset;
+    }
+
+    public Vector3 PointWorldPosition(int x, int y, OffsetType offsetType = OffsetType.BOTTOM_LEFT)
+    {
+        var offset = Offset(offsetType);
         
         var BL = _transform.position
-                 - _anchor.x * _gridWidth * right
-                 - _anchor.y * _gridHeight * up;
+                 - _anchor.x * _gridWidth * _right
+                 - _anchor.y * _gridHeight * _up;
         
-        var point = BL + right * _cellSize * (x + offset.x) + up * _cellSize * (y + offset.y);
+        var point = BL + _right * _cellSize * (x + offset.x) + _up * _cellSize * (y + offset.y);
         return point;
+    }
+
+    public Vector3 ObjectWorldPosition(T obj, OffsetType offsetType = OffsetType.CENTER)
+    {
+        int x, y;
+        GetObjectCoordinates(obj, out x, out y);
+        return PointWorldPosition(x, y, offsetType);
     }
 
     public void GetXY(Vector3 worldPos, out int x, out int y)
     {
         var localPos = worldPos - BL;
-        x = Mathf.FloorToInt(localPos.x / _cellSize);
-        y = Mathf.FloorToInt(localPos.y / _cellSize);
+        var projectedX = Vector3.Dot(_transform.right, localPos);
+        var projectedY = Vector3.Dot(_transform.up, localPos);
+        x = Mathf.FloorToInt(projectedX / _cellSize);
+        y = Mathf.FloorToInt(projectedY / _cellSize);
     }
 
     private bool IsInBounds(int x, int y)
@@ -115,6 +133,21 @@ public class GridObject<T>
         SetObject(x, y, obj);
     }
 
+    public void GetObjectCoordinates(T obj, out int x, out int y)
+    {
+        x = -1;
+        y = -1;
+        
+        for (int i = 0; i < _width; i++)
+            for (int j = 0; j < _height; j++)
+                if (_items[i, j].Equals(obj))
+                {
+                    x = i;
+                    y = j;
+                    return;
+                }
+    }
+
     private void OnDebug()
     {
         var BR = BL + _transform.right * _width * _cellSize;
@@ -134,5 +167,14 @@ public class GridObject<T>
                 Debug.DrawLine(point, point + _transform.up * _cellSize, Color.white, 100f);
             }
         }
+    }
+
+    public List<T> ToList()
+    {
+        List<T> list = new List<T>();
+        for (int x = 0; x < _width; x++)
+            for (int y = 0; y < _height; y++)
+                list.Add(_items[x,y]);
+        return list;
     }
 }

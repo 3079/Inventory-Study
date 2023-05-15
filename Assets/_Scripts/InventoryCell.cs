@@ -4,7 +4,8 @@ using UnityEngine.EventSystems;
 using TMPro;
 using UnityEngine.UI;
 
-public class InventoryCell : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler, IDragHandler, IDropHandler
+// public class InventoryCell : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler, IDragHandler, IDropHandler
+public class InventoryCell : MonoBehaviour
 {
     [SerializeField] private Sprite _cellBackground;
     [SerializeField] private TextMeshProUGUI _stacksText;
@@ -103,5 +104,27 @@ public class InventoryCell : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     public void ResetCell()
     {
         _image.color = _baseColor;
+    }
+
+    public void Debug()
+    {
+        _image.color = Color.green;
+    }
+
+    public void StoreItem(Item item)
+    {
+        _storedItem = item;
+        _image.color = _holdingItemColor;
+    }
+
+    public void GrabItem()
+    {
+        _storedItem = null;
+        _image.color = _availableColor;
+    }
+
+    public bool IsEmpty()
+    {
+        return _storedItem == null;
     }
 }

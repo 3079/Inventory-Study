@@ -178,6 +178,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4362024698298596526}
   - component: {fileID: 3400701193861788689}
+  - component: {fileID: 8389484279712121093}
   m_Layer: 0
   m_Name: pistol
   m_TagString: Untagged
@@ -214,4 +215,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83bd27c523c70b146b9b5b58278431bb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _inventoryWidth: 0
+  _inventoryHeight: 0
   _inventoryScaleFactor: 1
+--- !u!65 &8389484279712121093
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4362024698298949774}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Size: {x: 0.94, y: 0.73, z: 0.18}
+  m_Center: {x: 0, y: 0, z: 0}
