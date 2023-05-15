@@ -64,6 +64,9 @@ public class InventoryCell : MonoBehaviour
         {
             _inventory.SetItemColor(_storedItem, ColorType.HOLDING_ITEM);
         }
+    }public void OnPointerExit()
+    {
+        ResetCell();
     }
 
     public void OnPointerDown(PointerEventData eventData)
@@ -81,9 +84,29 @@ public class InventoryCell : MonoBehaviour
         ResetCell();
     }
 
+    public void ClearCell()
+    {
+        _image.color = _baseColor;
+    }
+
     public void OnDrop(PointerEventData eventData)
     {
         ResetCell();
+    }
+    
+    public void OnAvailable()
+    {
+        _image.color = _availableColor;
+    }
+
+    public void OnUnavailable()
+    {
+        _image.color = _unavailableColor;
+    }
+    
+    public void OnCanSwap()
+    {
+        _image.color = _swapColor;
     }
 
     public void SetColor(ColorType colorType)
@@ -103,7 +126,12 @@ public class InventoryCell : MonoBehaviour
 
     public void ResetCell()
     {
-        _image.color = _baseColor;
+        if (_storedItem == null)
+            ClearCell();
+        else
+        {
+            _inventory.SetItemColor(_storedItem, ColorType.HOLDING_ITEM);
+        }
     }
 
     public void Debug()
@@ -116,11 +144,22 @@ public class InventoryCell : MonoBehaviour
         _storedItem = item;
         _image.color = _holdingItemColor;
     }
-
-    public void GrabItem()
+    
+    public void DeleteItem()
     {
         _storedItem = null;
+        ClearCell();
+    }
+
+    public Item GrabItem()
+    {
+        if (IsEmpty()) return null;
+        
+        var item = _storedItem;
+        _storedItem = null;
         _image.color = _availableColor;
+        ClearCell();
+        return item;
     }
 
     public bool IsEmpty()

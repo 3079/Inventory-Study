@@ -87,6 +87,8 @@ public class Inventory : MonoBehaviour, IInteractable
     [SerializeField] private Vector2 _anchor;
     [SerializeField] private Transform _gridParent;
     public Transform GridParent => _gridParent;
+    [SerializeField] private float _itemForwardOffset = -0.1f;
+    public float ItemForwardOffset => _itemForwardOffset;
     [SerializeField] private bool _debug;
     [SerializeField] private GameObject _gridCell;
      
@@ -195,5 +197,35 @@ public class Inventory : MonoBehaviour, IInteractable
             if (cell._storedItem == item)
                 cell.SetColor(color);
         }
+    }
+
+    public void ResetItemCells(Item item)
+    {
+        foreach (var cell in _grid.ToList())
+        {
+            if (cell._storedItem == item)
+                cell.ResetCell();
+        }
+    }
+    
+    public void RemoveItem (Item item)
+    {
+        foreach (var cell in _grid.ToList())
+        {
+            if (cell._storedItem == item)
+                cell.DeleteItem();
+        }
+    }
+
+    public List<InventoryCell> GetItemCells(Item item)
+    {
+        List<InventoryCell> list = new List<InventoryCell>();
+        foreach (var cell in _grid.ToList())
+        {
+            if (cell._storedItem == item)
+                list.Add(cell);
+        }
+
+        return list;
     }
 }
