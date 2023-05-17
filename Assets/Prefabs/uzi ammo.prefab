@@ -543,7 +543,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7236683891570092623}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: uzi ammo
   m_TagString: Untagged
   m_Icon: {fileID: 0}

@@ -88,12 +88,15 @@ public class Inventory : MonoBehaviour, IInteractable
     [SerializeField] private Transform _gridParent;
     public Transform GridParent => _gridParent;
     [SerializeField] private float _itemForwardOffset = -0.1f;
+    [SerializeField] private float _itemForwardOffsetHovering = -0.2f;
     public float ItemForwardOffset => _itemForwardOffset;
+    public float ItemForwardOffsetHovering => _itemForwardOffsetHovering;
     [SerializeField] private bool _debug;
     [SerializeField] private GameObject _gridCell;
      
     public GridObject<InventoryCell> _grid { get; private set; }
     // private List<InventoryCell> _cells;
+    private CameraController _cameraController;
 
     public event Action OnOpenInventory;
     public event Action OnCloseInventory;
@@ -101,7 +104,7 @@ public class Inventory : MonoBehaviour, IInteractable
     private void Awake()
     {
         _grid = new GridObject<InventoryCell>(_height, _width, _cellSize, _gridParent, _anchor, _debug);
-        
+        _cameraController = FindObjectOfType<CameraController>();
     }
 
     void Start()

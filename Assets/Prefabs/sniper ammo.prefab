@@ -327,7 +327,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8150362646864780471}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: sniper ammo
   m_TagString: Untagged
   m_Icon: {fileID: 0}

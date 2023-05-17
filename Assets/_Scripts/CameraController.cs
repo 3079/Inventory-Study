@@ -37,6 +37,7 @@ public class CameraController : MonoBehaviour
         _inventory = FindObjectOfType<Inventory>();
         _inventory.OnOpenInventory += LockCamera;
         _inventory.OnCloseInventory += UnlockCamera;
+        _inventory.OnCloseInventory += SnapItemToCenter;
         _raycaster = FindObjectOfType<GraphicRaycaster>();
         _eventSystem = FindObjectOfType<EventSystem>();
         // _pointer = new PointerEventData(_eventSystem);
@@ -66,7 +67,7 @@ public class CameraController : MonoBehaviour
             {
                 if (_holdingItem)
                 {
-                    Debug.Log("Trying to place item "+ PlaceItem());
+                    // Debug.Log("Trying to place item "+ PlaceItem());
                 }
                 else
                 {
@@ -80,6 +81,12 @@ public class CameraController : MonoBehaviour
                     }
                 }
             }
+            
+            // TODO Add item rotation when holding
+            
+            // TODO Add item dropping based on surface normal
+            
+            // TODO Add better state control for when in/out inventory UI, hovering UI / hovering world surface, holding / not holding item
         }
         else
         {
@@ -117,22 +124,21 @@ public class CameraController : MonoBehaviour
         PointerInputModule input = _eventSystem.currentInputModule as PointerInputModule;
     }
 
-    private void GrabItem(GameObject itemObj, Item item)
+    public void GrabItem(GameObject itemObj, Item item)
     {
-        // TODO
         if (_holdingItem) return;
         itemObj.transform.parent = transform;
+        // TODO Implement different offset for when hovering
         itemObj.transform.rotation = _inventory.GridParent.transform.rotation;
         item.OnGrabbed();
         _heldItem = item.gameObject;
         _holdingItem = true;
         _inventory.RemoveItem(item);
-        // HoveredCells();
-        // Debug.Log("item width: " + item._inventoryWidth);
-        // Debug.Log("item height: " + item._inventoryHeight);
+        // TODO put it somewhere else
+        item.OnInventoryExit();
     }
     
-    private bool PlaceItem()
+    public bool PlaceItem()
     {
         // TODO
         // var cells = HoveredCells();
@@ -160,6 +166,9 @@ public class CameraController : MonoBehaviour
         _heldItem.transform.parent = null;
         _heldItem = null;
         _holdingItem = false;
+        
+        // TODO put it somewhere else
+        item.OnInventoryEnter();
         return true;
     }
 
@@ -191,14 +200,19 @@ public class CameraController : MonoBehaviour
         pos /= item._inventoryWidth * item._inventoryHeight;
         _heldItem.transform.position = pos + _inventory.GridParent.transform.forward * _inventory.ItemForwardOffset;
         _heldItem.transform.parent = null;
+        // TODO put it somewhere else
+        item.OnInventoryEnter();
         
         // grab item swapped with
         var swapItemGameObj = swapItem.gameObject;
         swapItemGameObj.transform.parent = transform;
+        // TODO Implement different offset for when hovering
         swapItemGameObj.transform.rotation = _inventory.GridParent.transform.rotation;
         swapItem.OnGrabbed();
         _heldItem = swapItemGameObj;
         _holdingItem = true;
+        // TODO put it somewhere else
+        swapItem.OnInventoryExit();
         // HoveredCells();
         return true;
     }
@@ -273,21 +287,14 @@ public class CameraController : MonoBehaviour
         {
             for (int y = 0; y < item._inventoryHeight; y++)
             {
-                // calculate center point coordinates of each cell that the item occupies and cast a ray from it into the inventory
-                // var xDelta = item._inventoryWidth == 1 ? 1 : item._inventoryWidth / (item._inventoryWidth - 1);
-                // var yDelta = item._inventoryHeight == 1 ? 1 : item._inventoryHeight / (item._inventoryHeight - 1);
-
                 var offset = _inventory.CellSize * (x - (item._inventoryWidth - 1) * 0.5f) * _inventory.GridParent.right +
                              _inventory.CellSize * (y - (item._inventoryHeight - 1) * 0.5f) * _inventory.GridParent.up;
                 
                 // TODO Replace item.transform.position with mousePos (+ item offset?) for snapping
-                // var point = item.transform.position + offset;
-                var point =MousePositionInWorld() + offset;
+                var point = MousePositionInWorld() + offset;
 
                 //debug
                 points.Add(point);
-                // Debug.Log("Offset X: " + (x - (item._inventoryWidth == 1 ? 0 : item._inventoryWidth * 0.5f)));
-                // Debug.Log("Offset Y: " + (y - (item._inventoryHeight == 1 ? 0 : item._inventoryHeight * 0.5f)));
 
                 // var pointer = new PointerEventData(_eventSystem);
                 // pointer.position = point;
@@ -297,6 +304,43 @@ public class CameraController : MonoBehaviour
                 if(cell != null)
                     hoveredCells.Add(cell);
                 // cell?.OnPointerEnter(pointer);
+            }
+        }
+        
+        // TODO snapping like in gloomwood???
+        // if not all shot rays hit, offset them by two times the (average position of the rays that hit minus object center position)
+        if (IsCursorOverInventory() && hoveredCells.Count < item._inventoryWidth * item._inventoryHeight)
+        {
+            var snapOffset = Vector3.zero;
+            foreach (var cell in hoveredCells)
+            {
+                snapOffset += _inventory._grid.ObjectWorldPosition(cell);
+            }
+            snapOffset /= hoveredCells.Count;
+            snapOffset -= _heldItem.transform.position;
+            snapOffset *= 2f;
+            
+            points.Clear();
+            hoveredCells.Clear();
+
+
+            for (int x = 0; x < item._inventoryWidth; x++)
+            {
+                for (int y = 0; y < item._inventoryHeight; y++)
+                {
+                    var offset = _inventory.CellSize * (x - (item._inventoryWidth - 1) * 0.5f) * _inventory.GridParent.right +
+                                 _inventory.CellSize * (y - (item._inventoryHeight - 1) * 0.5f) * _inventory.GridParent.up;
+                
+                    // TODO Replace item.transform.position with mousePos (+ item offset?) for snapping
+                    var point = MousePositionInWorld() + offset + snapOffset;
+
+                    //debug
+                    points.Add(point);
+
+                    var cell = _inventory.GetCellAtWorldPos(point);
+                    if(cell != null)
+                        hoveredCells.Add(cell);
+                }
             }
         }
 
@@ -318,9 +362,15 @@ public class CameraController : MonoBehaviour
         // }
 
         bool unavailable = false;
+        bool fullyHovered = _hoveredCells.Count == item._inventoryWidth * item._inventoryHeight;
         foreach (var cell in _hoveredCells) { unavailable |= !cell.IsEmpty(); }
         foreach (var cell in _hoveredCells)
         {
+            if (!fullyHovered)
+            {
+                cell?.ResetCell();
+                continue;
+            }
             if(ShouldSwap())
                 cell?.OnCanSwap();
             else
@@ -339,11 +389,25 @@ public class CameraController : MonoBehaviour
         SnapToGrid();
     }
 
+    private bool IsCursorOverInventory()
+    {
+        var point = MousePositionInWorld();
+        var cell = _inventory.GetCellAtWorldPos(point);
+        return cell != null;
+    }
+
     private Vector3 MousePositionInWorld()
     {
         var distanceFromCamera = Vector3.Dot(_heldItem.transform.position - _mainCamera.transform.position, _mainCamera.transform.forward);
         var mousePositionInWorld = _mainCamera.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, distanceFromCamera));
         return mousePositionInWorld;
+    }
+    private Vector3 ScreenCenterPositionInWorld()
+    {
+        Vector2 screenCenter = new Vector2(Screen.width / 2f, Screen.height / 2f);
+        var distanceFromCamera = Vector3.Dot(_heldItem.transform.position - _mainCamera.transform.position, _mainCamera.transform.forward);
+        var screenCenterPositionInWorld = _mainCamera.ScreenToWorldPoint(new Vector3(screenCenter.x, screenCenter.y, distanceFromCamera));
+        return screenCenterPositionInWorld;
     }
 
     private void SnapToGrid()
@@ -418,9 +482,29 @@ public class CameraController : MonoBehaviour
         _isLocked = false;
     }
 
+    private void SnapItemToCenter()
+    {
+        if (_holdingItem)
+        {
+            _heldItem.transform.position = ScreenCenterPositionInWorld();
+            Debug.Log(Input.mousePosition);
+        }
+    }
+
     private void OnDisable()
     {
         _inventory.OnOpenInventory -= LockCamera;
         _inventory.OnCloseInventory -= UnlockCamera;
+        _inventory.OnCloseInventory -= SnapItemToCenter;
+    }
+
+    public bool UICallbacks()
+    {
+        return _isLocked && !_holdingItem;
+    }
+    
+    public bool CanPlaceItem()
+    {
+        return _isLocked && _holdingItem;
     }
 }

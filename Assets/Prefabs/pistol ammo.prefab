@@ -277,7 +277,7 @@ GameObject:
   - component: {fileID: 7094411313295798873}
   - component: {fileID: 6465656222482126699}
   - component: {fileID: 7200095063957851095}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: pistol ammo
   m_TagString: Untagged
   m_Icon: {fileID: 0}

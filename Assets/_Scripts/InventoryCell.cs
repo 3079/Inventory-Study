@@ -4,8 +4,8 @@ using UnityEngine.EventSystems;
 using TMPro;
 using UnityEngine.UI;
 
-// public class InventoryCell : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler, IDragHandler, IDropHandler
-public class InventoryCell : MonoBehaviour
+public class InventoryCell : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler, IDragHandler, IDropHandler, IPointerClickHandler
+// public class InventoryCell : MonoBehaviour
 {
     [SerializeField] private Sprite _cellBackground;
     [SerializeField] private TextMeshProUGUI _stacksText;
@@ -32,6 +32,8 @@ public class InventoryCell : MonoBehaviour
     
     private Image _image;
     private Inventory _inventory;
+
+    private CameraController _cameraController;
     // [SerializeField] public Item _storedItem { get; private set; }
     public Item _storedItem;
 
@@ -39,48 +41,59 @@ public class InventoryCell : MonoBehaviour
     {
         _image = GetComponent<Image>();
         _inventory = GetComponentInParent<Inventory>();
+        _cameraController = FindObjectOfType<CameraController>();
     }
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        if (_storedItem == null)
+        if (!_cameraController.UICallbacks()) return;
+        if (IsEmpty())
             _image.color = _hoverColor;
         else
         {
             // TODO:
             // get size of the stored object and highlight all the cells occupied by it
             // or maybe just scan all the cells and highlight ones that store the same object
-            _inventory.SetItemColor(_storedItem, ColorType.HOVER);
+            foreach (var cell in _inventory.GetItemCells(_storedItem))
+                _inventory.SetItemColor(_storedItem, ColorType.HOVER);
             var x = _storedItem._inventoryWidth;
             var y = _storedItem._inventoryHeight;
         }
     }
-
+    
     public void OnPointerExit(PointerEventData eventData)
     {
-        if (_storedItem == null)
-            ResetCell();
-        else
-        {
-            _inventory.SetItemColor(_storedItem, ColorType.HOLDING_ITEM);
-        }
-    }public void OnPointerExit()
+        if (!_cameraController.UICallbacks()) return;
+        ResetCell();
+    }
+    public void OnPointerExit()
     {
         ResetCell();
     }
 
     public void OnPointerDown(PointerEventData eventData)
     {
+        if (!_cameraController.UICallbacks() || _storedItem != null) return;
         _image.color = _holdingItemColor;
+        
+        // TODO call cameraController grab method on stored item? or place or swap
     }
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        _image.color = eventData.hovered.Contains(gameObject) ? _hoverColor : _baseColor;
+        if (!_cameraController.UICallbacks() || _storedItem != null) return;
+        if (IsEmpty()) ResetCell();
+        else
+        {
+            if (eventData.hovered.Contains(_storedItem.gameObject))
+                _inventory.SetItemColor(_storedItem, ColorType.HOVER);
+        }
+        OnPointerEnter(eventData);
     }
 
     public void OnDrag(PointerEventData eventData)
     {
+        if (!_cameraController.UICallbacks()) return;
         ResetCell();
     }
 
@@ -91,6 +104,7 @@ public class InventoryCell : MonoBehaviour
 
     public void OnDrop(PointerEventData eventData)
     {
+        if (!_cameraController.UICallbacks()) return;
         ResetCell();
     }
     
@@ -126,7 +140,7 @@ public class InventoryCell : MonoBehaviour
 
     public void ResetCell()
     {
-        if (_storedItem == null)
+        if (IsEmpty())
             ClearCell();
         else
         {
@@ -149,6 +163,21 @@ public class InventoryCell : MonoBehaviour
     {
         _storedItem = null;
         ClearCell();
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (!_cameraController.UICallbacks())
+        {
+            if (_cameraController.CanPlaceItem())
+                _cameraController.PlaceItem();
+            else return;
+        }
+        else
+        {
+            if (_storedItem != null)
+                _cameraController.GrabItem(_storedItem.gameObject, _storedItem);
+        }
     }
 
     public Item GrabItem()
