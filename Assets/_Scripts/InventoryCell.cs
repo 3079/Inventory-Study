@@ -35,7 +35,7 @@ public class InventoryCell : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
 
     private CameraController _cameraController;
     // [SerializeField] public Item _storedItem { get; private set; }
-    public Item _storedItem;
+    public Item _storedItem = null;
 
     private void Awake()
     {
@@ -51,13 +51,10 @@ public class InventoryCell : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
             _image.color = _hoverColor;
         else
         {
-            // TODO:
-            // get size of the stored object and highlight all the cells occupied by it
-            // or maybe just scan all the cells and highlight ones that store the same object
-            foreach (var cell in _inventory.GetItemCells(_storedItem))
-                _inventory.SetItemColor(_storedItem, ColorType.HOVER);
-            var x = _storedItem._inventoryWidth;
-            var y = _storedItem._inventoryHeight;
+            // foreach (var cell in _inventory.GetItemCells(_storedItem))
+            _inventory.SetItemColor(_storedItem, ColorType.HOVER);
+            // var x = _storedItem._inventoryWidth;
+            // var y = _storedItem._inventoryHeight;
         }
     }
     
@@ -75,8 +72,6 @@ public class InventoryCell : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     {
         if (!_cameraController.UICallbacks() || _storedItem != null) return;
         _image.color = _holdingItemColor;
-        
-        // TODO call cameraController grab method on stored item? or place or swap
     }
 
     public void OnPointerUp(PointerEventData eventData)
@@ -167,6 +162,7 @@ public class InventoryCell : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
 
     public void OnPointerClick(PointerEventData eventData)
     {
+        if (eventData.button != PointerEventData.InputButton.Left) return;
         if (!_cameraController.UICallbacks())
         {
             if (_cameraController.CanPlaceItem())

@@ -8,8 +8,11 @@ public class Item : MonoBehaviour
     [Header("General Item Parameters")]
     public int _inventoryWidth;
     public int _inventoryHeight;
+    public int _inventorySize => _inventoryHeight * _inventoryWidth;
     [SerializeField] private float _inventoryScaleFactor;
     private Collider _collider;
+    // public float LocalZAngle { get; private set; } = 0f;
+    public int LocalZAngle = 0;
 
     private void Awake()
     {
@@ -17,6 +20,11 @@ public class Item : MonoBehaviour
     }
 
     public void OnGrabbed()
+    {
+        // or maybe just set different layers and layerMasks for UI elements and items
+    }
+    
+    public void OnDropped()
     {
         // or maybe just set different layers and layerMasks for UI elements and items
     }
@@ -34,7 +42,7 @@ public class Item : MonoBehaviour
     }
     public void OnEnterInventorySpace()
     {
-        transform.rotation = Quaternion.identity;
+        // transform.rotation = Quaternion.identity;
         var scale = transform.localScale;
         scale *= _inventoryScaleFactor;
         transform.localScale = scale;
@@ -50,5 +58,17 @@ public class Item : MonoBehaviour
     public void OnCallContextMenu()
     {
         return;
+    }
+
+    public void Rotate(Vector3 axis)
+    {
+        // TODO DEBUG
+        axis = axis == Vector3.zero ? -1 * transform.forward : axis;
+        // axis = -1 * transform.forward;
+        axis = transform.parent ? transform.parent.InverseTransformDirection(axis) : axis;
+        var rotation = Quaternion.AngleAxis(90f, axis) *  transform.localRotation;
+        LocalZAngle = (LocalZAngle + 270) % 360;
+        transform.SetLocalPositionAndRotation(transform.localPosition, rotation);
+        (_inventoryWidth, _inventoryHeight) = (_inventoryHeight, _inventoryWidth);
     }
 }

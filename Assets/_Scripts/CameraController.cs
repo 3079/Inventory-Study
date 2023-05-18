@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 public class CameraController : MonoBehaviour
@@ -18,16 +17,17 @@ public class CameraController : MonoBehaviour
     private float _xRotation = 0.0f;
     private Camera _mainCamera;
     private Inventory _inventory;
-    private bool _isLocked = false;
+    private bool _isInventoryOpen = false;
     
-    private GameObject _heldItem;
-    private bool _holdingItem;
+    private GameObject _heldItem = null;
+    private bool _isHoldingItem = false;
     private List<InventoryCell> _hoveredCells = new List<InventoryCell>();
 
     // required for item-canvas interactions
     private GraphicRaycaster _raycaster;
     private EventSystem _eventSystem;
     private PointerEventData _pointer;
+    // for debugging purposes
     private List<Vector3> points;
 
     private void Awake()
@@ -35,9 +35,8 @@ public class CameraController : MonoBehaviour
         _mainCamera = Camera.main;
         Cursor.lockState = CursorLockMode.Confined;
         _inventory = FindObjectOfType<Inventory>();
-        _inventory.OnOpenInventory += LockCamera;
-        _inventory.OnCloseInventory += UnlockCamera;
-        _inventory.OnCloseInventory += SnapItemToCenter;
+        _inventory.OnOpenInventory += OnOpenInventory;
+        _inventory.OnCloseInventory += OnCloseInventory;
         _raycaster = FindObjectOfType<GraphicRaycaster>();
         _eventSystem = FindObjectOfType<EventSystem>();
         // _pointer = new PointerEventData(_eventSystem);
@@ -46,53 +45,87 @@ public class CameraController : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.E)) Interact();
+        // if (Input.GetKeyDown(KeyCode.E)) Interact();
+        if (Input.GetKeyDown(KeyCode.Tab)) _inventory.Interact();
+
+        var isCursorOverInventory = IsCursorOverInventory();
+        
+        HandleMouseMovement(_isInventoryOpen, _isHoldingItem, isCursorOverInventory);
+        if(Input.GetMouseButtonDown(0)) HandleLeftClick(_isInventoryOpen, _isHoldingItem, isCursorOverInventory, Vector3.zero);
+        if(Input.GetMouseButtonDown(1)) HandleRightClick();
+        
         
         // TODO: allow rotating camera while locked by moving cursor into the corner of the screen
-        if (_isLocked)
-        {
-            // UpdatePointerPosition()
-            // {
-            // }
-
-            if (_holdingItem)
-            {
-                // TODO replace with grid snapping
-                _heldItem.transform.position = MousePositionInWorld();
-                
-                HoveredCells();
-            }
-            
-            if (Input.GetMouseButtonDown(0))
-            {
-                if (_holdingItem)
-                {
-                    // Debug.Log("Trying to place item "+ PlaceItem());
-                }
-                else
-                {
-                    RaycastHit hit;
-                    var ray = _mainCamera.ScreenPointToRay(Input.mousePosition);
-                    if (Physics.Raycast(ray, out hit, 10f, _itemMask))
-                    {
-                        var hitObject = hit.transform.gameObject;
-                        var item = hitObject.GetComponent<Item>();
-                        if (item != null) GrabItem(hitObject, item);
-                    }
-                }
-            }
-            
-            // TODO Add item rotation when holding
-            
-            // TODO Add item dropping based on surface normal
-            
-            // TODO Add better state control for when in/out inventory UI, hovering UI / hovering world surface, holding / not holding item
-        }
-        else
-        {
-            Look();
-            Move();
-        }
+        // if (_isInventoryOpen)
+        // {
+        //     if (_isHoldingItem)
+        //     {
+        //         _heldItem.transform.position = MousePositionInWorld();
+        //         
+        //         HoveredCells();
+        //     }
+        //
+        //     if (Input.GetMouseButtonDown(1))
+        //     {
+        //         if(_isHoldingItem) RotateItem();
+        //     }
+        //
+        //     // LMB Behaviour
+        //     if (Input.GetMouseButtonDown(0))
+        //     {
+        //         // if (_holdingItem)
+        //         // {
+        //         //     if (IsCursorOverInventory())
+        //         //     {
+        //         //         // this behaviour is handled in InventoryCell class
+        //         //     }
+        //         //     else
+        //         //     {
+        //         //         DropItem();
+        //         //     }
+        //         // }
+        //         // else
+        //         // {
+        //         //     if (IsCursorOverInventory())
+        //         //     {
+        //         //         // this behaviour is handled in InventoryCell class
+        //         //     }
+        //         //     else
+        //         //     {
+        //         //         var item = GrabItemRaycast();
+        //         //         if (item != null) GrabItem(item.gameObject, item);
+        //         //     }
+        //         // }
+        //
+        //         
+        //         // TODO there's a bug when item is snapped to the grid but the mouse is outside of it and you press LMB item doesn't get stored
+        //         
+        //         // inverted version of the commented code above
+        //         if (!isCursorOverInventory)
+        //         {
+        //             if (_isHoldingItem)
+        //             {
+        //                 // TODO
+        //                 if (IsItemOverInventory()) PlaceItem();
+        //                 else DropItem();
+        //             }
+        //             else
+        //             {
+        //                 var item = GrabItemRaycast();
+        //                 if (item != null) GrabItem(item.gameObject, item);
+        //             }
+        //         }
+        //     }
+        //     
+        //     // TODO Add item dropping based on surface normal
+        //     
+        //     // TODO Potentially add better state control for when in/out inventory UI, hovering UI / hovering world surface, holding / not holding item
+        // }
+        // else
+        // {
+        //     Look();
+        //     Move();
+        // }
 
         // if (Input.GetMouseButtonDown(0))
         // {
@@ -104,6 +137,140 @@ public class CameraController : MonoBehaviour
         //         // cell?.OnPointerEnter();
         //     }
         // }
+    }
+
+    private void HandleMouseMovement(bool isInventoryOpen, bool isHoldingItem, bool isCursorOverInventory)
+    {
+        if (isInventoryOpen)
+        {
+            if (isHoldingItem)
+            {
+                _heldItem.transform.position = MousePositionInWorld();
+                HoveredCells();
+
+                if (isCursorOverInventory)
+                {
+                    
+                }
+                else
+                {
+                    // TODO: Raycast for item position
+                }
+            }
+            else
+            {
+                // TODO: Check for screen corners and rotate camera if needed
+            }
+        }
+        else
+        {
+            Look();
+            Move();
+            
+            if (isHoldingItem)
+            {
+                // TODO: Move object to screen center with a small force, so that it can return back if put off center via colliding
+            }
+        }
+    }
+    
+    private void HandleLeftClick(bool isInventoryOpen, bool isHoldingItem, bool isCursorOverInventory, Vector3 targetedSurface)
+    {
+        if (isInventoryOpen)
+        {
+            if (isCursorOverInventory) return;
+            
+            if (isHoldingItem)
+            {
+                if (IsItemOverInventory()) PlaceItem();
+                else HandleDropItem(targetedSurface);
+            }
+            else
+            {
+                HandleGrabItem();
+            }
+        }
+        else
+        {
+            if (isHoldingItem)
+            {
+                // Place or throw item depending on whether the raycast from camera hit anything
+                HandleDropItem(targetedSurface);
+            }
+            else
+            {
+                HandleGrabItem();
+            }
+        }
+    }
+
+    private void HandleGrabItem()
+    {
+        var item = GrabItemRaycast();
+        
+        // A method for attacking would be here I guess
+        if (item == null) return;
+
+        if (Input.GetKey(KeyCode.LeftShift))
+        {
+            // Try storing item in inventory
+            if(!_inventory.TryStoreItem(item))
+                // TODO: Somehow let player know there's no place in their inventory. Possibly GrabItem()
+                GrabItem(item.gameObject, item);
+        }
+        else
+        {
+            GrabItem(item.gameObject, item);
+            SnapItemToCenter();
+        }
+    }
+
+    private void HandleDropItem(Vector3 surface)
+    {
+        // TODO: Place or throw item depending on whether the raycast from camera hit anything
+        DropItem();
+    }
+    
+    private void HandleRightClick()
+    {
+        // TODO
+        if(_isHoldingItem) RotateItem();
+    }
+
+    private bool IsItemOverInventory()
+    {
+        if (_heldItem == null || !_isInventoryOpen) return false;
+
+        return _inventory.GetCellAtWorldPos(HoveredCellsMidPoint());
+    }
+
+    private Item GrabItemRaycast()
+    {
+        RaycastHit hit;
+        var ray = _mainCamera.ScreenPointToRay(Input.mousePosition);
+        if (Physics.Raycast(ray, out hit, 10f, _itemMask))
+        {
+            var hitObject = hit.transform.gameObject;
+            var item = hitObject.GetComponent<Item>();
+            if (item != null) return item;
+        }
+
+        return null;
+    }
+
+    private void DropItem()
+    {
+        // TODO implement advanced logic
+        _heldItem.transform.parent = null;
+        _heldItem.GetComponent<Item>().OnDropped();
+        _heldItem = null;
+        _isHoldingItem = false;
+    }
+
+    private void RotateItem()
+    {
+        // TODO DEBUG
+        _heldItem.GetComponent<Item>().Rotate(IsItemOverInventory() ? -1 * _inventory.GridParent.transform.forward : Vector3.zero);
     }
 
     private Vector3 HoveredCellsMidPoint()
@@ -118,21 +285,21 @@ public class CameraController : MonoBehaviour
         return pos;
     }
 
-    private void UpdatePointerPosition()
-    {
-        if (!_holdingItem) return;
-        PointerInputModule input = _eventSystem.currentInputModule as PointerInputModule;
-    }
+    // private void UpdatePointerPosition()
+    // {
+    //     if (!_holdingItem) return;
+    //     PointerInputModule input = _eventSystem.currentInputModule as PointerInputModule;
+    // }
 
     public void GrabItem(GameObject itemObj, Item item)
     {
-        if (_holdingItem) return;
+        if (_isHoldingItem) return;
         itemObj.transform.parent = transform;
         // TODO Implement different offset for when hovering
-        itemObj.transform.rotation = _inventory.GridParent.transform.rotation;
+        // itemObj.transform.rotation = _inventory.GridParent.transform.rotation;
         item.OnGrabbed();
         _heldItem = item.gameObject;
-        _holdingItem = true;
+        _isHoldingItem = true;
         _inventory.RemoveItem(item);
         // TODO put it somewhere else
         item.OnInventoryExit();
@@ -140,7 +307,6 @@ public class CameraController : MonoBehaviour
     
     public bool PlaceItem()
     {
-        // TODO
         // var cells = HoveredCells();
         var item = _heldItem.GetComponent<Item>(); ;
         if (_hoveredCells.Count < item._inventoryWidth * item._inventoryHeight) return false;
@@ -155,9 +321,14 @@ public class CameraController : MonoBehaviour
         
         var pos = Vector3.zero;
         _inventory.RemoveItem(item);
+        
+        // TODO probably make that an inventory method and call it from here
+
+        if (!_inventory.TryStoreItem(item, _hoveredCells))
+            throw new InvalidOperationException("Calling PlaceItem method returned false because item size is bigger than the hovered cells list");
+        
         foreach (var cell in _hoveredCells) 
         {
-            cell.StoreItem(item);
             pos += _inventory._grid.ObjectWorldPosition(cell);
         }
 
@@ -165,7 +336,7 @@ public class CameraController : MonoBehaviour
         _heldItem.transform.position = pos + _inventory.GridParent.transform.forward * _inventory.ItemForwardOffset;
         _heldItem.transform.parent = null;
         _heldItem = null;
-        _holdingItem = false;
+        _isHoldingItem = false;
         
         // TODO put it somewhere else
         item.OnInventoryEnter();
@@ -174,8 +345,6 @@ public class CameraController : MonoBehaviour
 
     private bool SwapItems()
     {
-        
-        // TODO
         var pos = Vector3.zero;
         var item = _heldItem.GetComponent<Item>();
         Item swapItem = null;
@@ -183,16 +352,17 @@ public class CameraController : MonoBehaviour
         foreach (var cell in _hoveredCells)
         {
             swapItem = cell.IsEmpty() ? swapItem : cell._storedItem;
+            // probably unnecessary
             cell.DeleteItem();
-            // cell.StoreItem(item);
-            // pos += _inventory._grid.ObjectWorldPosition(cell);
         }
         
         _inventory.RemoveItem(swapItem);
         
+        if (!_inventory.TryStoreItem(item, _hoveredCells))
+            throw new InvalidOperationException("Calling SwapItem method returned false because item size is bigger than the hovered cells list");
+        
         foreach (var cell in _hoveredCells)
         {
-            cell.StoreItem(item);
             pos += _inventory._grid.ObjectWorldPosition(cell);
         }
         
@@ -207,10 +377,10 @@ public class CameraController : MonoBehaviour
         var swapItemGameObj = swapItem.gameObject;
         swapItemGameObj.transform.parent = transform;
         // TODO Implement different offset for when hovering
-        swapItemGameObj.transform.rotation = _inventory.GridParent.transform.rotation;
+        // swapItemGameObj.transform.rotation = _inventory.GridParent.transform.rotation;
         swapItem.OnGrabbed();
         _heldItem = swapItemGameObj;
-        _holdingItem = true;
+        _isHoldingItem = true;
         // TODO put it somewhere else
         swapItem.OnInventoryExit();
         // HoveredCells();
@@ -290,7 +460,6 @@ public class CameraController : MonoBehaviour
                 var offset = _inventory.CellSize * (x - (item._inventoryWidth - 1) * 0.5f) * _inventory.GridParent.right +
                              _inventory.CellSize * (y - (item._inventoryHeight - 1) * 0.5f) * _inventory.GridParent.up;
                 
-                // TODO Replace item.transform.position with mousePos (+ item offset?) for snapping
                 var point = MousePositionInWorld() + offset;
 
                 //debug
@@ -307,9 +476,9 @@ public class CameraController : MonoBehaviour
             }
         }
         
-        // TODO snapping like in gloomwood???
         // if not all shot rays hit, offset them by two times the (average position of the rays that hit minus object center position)
-        if (IsCursorOverInventory() && hoveredCells.Count < item._inventoryWidth * item._inventoryHeight)
+        // if (IsCursorOverInventory() && hoveredCells.Count < item._inventoryWidth * item._inventoryHeight)
+        if (hoveredCells.Count < item._inventoryWidth * item._inventoryHeight)
         {
             var snapOffset = Vector3.zero;
             foreach (var cell in hoveredCells)
@@ -331,7 +500,6 @@ public class CameraController : MonoBehaviour
                     var offset = _inventory.CellSize * (x - (item._inventoryWidth - 1) * 0.5f) * _inventory.GridParent.right +
                                  _inventory.CellSize * (y - (item._inventoryHeight - 1) * 0.5f) * _inventory.GridParent.up;
                 
-                    // TODO Replace item.transform.position with mousePos (+ item offset?) for snapping
                     var point = MousePositionInWorld() + offset + snapOffset;
 
                     //debug
@@ -385,19 +553,38 @@ public class CameraController : MonoBehaviour
             cell?.OnPointerExit();
         }
 
-        // TODO add grid snapping
         SnapToGrid();
     }
 
     private bool IsCursorOverInventory()
     {
-        var point = MousePositionInWorld();
-        var cell = _inventory.GetCellAtWorldPos(point);
-        return cell != null;
+        // // nullref exception when no item held
+        // var point = MousePositionInWorld();
+        // var cell = _inventory.GetCellAtWorldPos(point);
+        // return cell != null;
+        if (!_isInventoryOpen) return false;
+        
+        PointerEventData pointerEventData = new PointerEventData(_eventSystem);
+        pointerEventData.position = Input.mousePosition;
+
+        // Perform the raycast
+        List<RaycastResult> results = new List<RaycastResult>(); // Adjust the array size based on your needs
+        _raycaster.Raycast(pointerEventData, results);
+        foreach (var result in results)
+        {
+            var cell = result.gameObject.GetComponentInParent<Inventory>();
+            if (cell != null) return true;
+        }
+
+        // TODO: throw some exception maybe
+        return false;
     }
 
+    
     private Vector3 MousePositionInWorld()
     {
+        // nullref exception when no item held
+        if (!_isHoldingItem) throw new NullReferenceException("Called MousePositionInWorld with no object held");
         var distanceFromCamera = Vector3.Dot(_heldItem.transform.position - _mainCamera.transform.position, _mainCamera.transform.forward);
         var mousePositionInWorld = _mainCamera.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, distanceFromCamera));
         return mousePositionInWorld;
@@ -414,8 +601,9 @@ public class CameraController : MonoBehaviour
     {
         var item = _heldItem.GetComponent<Item>();
         
-        if (_hoveredCells.Count < item._inventoryWidth * item._inventoryHeight) return;
+        if (_hoveredCells.Count < item._inventorySize) return;
 
+        _heldItem.transform.rotation = Quaternion.Euler(_inventory.GridParent.transform.eulerAngles.x, _inventory.GridParent.transform.eulerAngles.y, item.LocalZAngle);
         _heldItem.transform.position = HoveredCellsMidPoint() + _inventory.GridParent.transform.forward * _inventory.ItemForwardOffset;
     }
 
@@ -432,7 +620,7 @@ public class CameraController : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        if(!_holdingItem) return;
+        if(!_isHoldingItem) return;
         
         Gizmos.color = Color.green;
         foreach (var point in points)
@@ -474,37 +662,48 @@ public class CameraController : MonoBehaviour
 
     void LockCamera()
     {
-        _isLocked = true;
+        _isInventoryOpen = true;
     }
 
     void UnlockCamera()
     {
-        _isLocked = false;
+        _isInventoryOpen = false;
     }
 
     private void SnapItemToCenter()
     {
-        if (_holdingItem)
+        if (_isHoldingItem)
         {
             _heldItem.transform.position = ScreenCenterPositionInWorld();
-            Debug.Log(Input.mousePosition);
+            // Debug.Log(Input.mousePosition);
         }
     }
 
     private void OnDisable()
     {
-        _inventory.OnOpenInventory -= LockCamera;
-        _inventory.OnCloseInventory -= UnlockCamera;
-        _inventory.OnCloseInventory -= SnapItemToCenter;
+        _inventory.OnOpenInventory -= OnOpenInventory;
+        _inventory.OnCloseInventory -= OnCloseInventory;
     }
 
     public bool UICallbacks()
     {
-        return _isLocked && !_holdingItem;
+        return _isInventoryOpen && !_isHoldingItem;
     }
     
     public bool CanPlaceItem()
     {
-        return _isLocked && _holdingItem;
+        return _isInventoryOpen && _isHoldingItem;
+    }
+
+    private void OnOpenInventory()
+    {
+        LockCamera();
+    }
+
+    private void OnCloseInventory()
+    {
+        UnlockCamera();
+        SnapItemToCenter();
+        _hoveredCells.Clear();
     }
 }

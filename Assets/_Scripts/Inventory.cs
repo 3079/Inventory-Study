@@ -231,4 +231,112 @@ public class Inventory : MonoBehaviour, IInteractable
 
         return list;
     }
+
+    public bool TryStoreItem(Item item)
+    {
+        // TODO
+        Debug.Log("TryStoreItem method called");
+        List<InventoryCell> freeCells = new List<InventoryCell>();
+        
+        // searching for free space in base orientation
+        for (int x = 0; x < _width; x++)
+        {
+            for (int y = 0; y < _height; y++)
+            {
+                freeCells = SearchForFreeCells(x, y, item._inventoryWidth, item._inventoryHeight);
+
+                if (freeCells.Count < item._inventorySize)
+                {
+                    freeCells.Clear();
+                    continue;
+                }
+
+                Debug.Log("Found free space in base orientation");
+                return StoreItem(item, freeCells);
+            }
+        }
+        
+        // searching for free space in rotated orientation
+        Debug.Log("Found no free space in base orientation, rotating object and trying again");
+        freeCells.Clear();
+            
+        for (int x = 0; x < _width; x++)
+        {
+            for (int y = 0; y < _height; y++)
+            {
+                freeCells = SearchForFreeCells(x, y, item._inventoryHeight, item._inventoryWidth);
+
+                if (freeCells.Count < item._inventorySize)
+                {
+                    freeCells.Clear();
+                    continue;
+                }
+                    
+                Debug.Log("Found free space rotated");
+                item.Rotate(Vector3.zero);
+                Debug.Log(item.transform.eulerAngles.z);
+                return StoreItem(item, freeCells);
+            }
+        }
+        
+        Debug.Log("Found no free space");
+        return false;
+    }
+
+    private bool StoreItem(Item item, List<InventoryCell> cells)
+    {
+        if (TryStoreItem(item, cells))
+        {
+            var pos = Vector3.zero;
+            foreach (var c in cells) 
+            {
+                pos += _grid.ObjectWorldPosition(c);
+            }
+            pos /= item._inventorySize;
+            item.transform.position = pos + _gridParent.transform.forward * _itemForwardOffset;
+            Debug.Log(item.transform.eulerAngles.z);
+            item.transform.rotation = Quaternion.Euler(_gridParent.transform.eulerAngles.x, _gridParent.transform.eulerAngles.y, item.LocalZAngle);
+            // TODO put it somewhere else
+            item.OnInventoryEnter();
+            Debug.Log("Successfully stored item");
+            return true;
+        }
+                
+        Debug.Log("Storing item failed");
+        return false;
+    }
+
+    private List<InventoryCell> SearchForFreeCells(int x, int y, int width, int height)
+    {
+        List<InventoryCell> list = new List<InventoryCell>();
+        for (int i = 0; i < width; i++)
+        {
+            for (int j = 0; j < height; j++)
+            {
+                var cell = _grid.GetObject(x + i, y + j);
+                if (cell == null)
+                {
+                    Debug.Log("Cell " + (x + i) + ", " + (y + j) + " is null");
+                    return list;
+                }
+                if (!cell.IsEmpty()) return list;
+                list.Add(cell);
+            }
+        }
+
+        return list;
+    }
+    
+    public bool TryStoreItem(Item item, List<InventoryCell> cells)
+    {
+        if (cells.Count < item._inventorySize)
+            return false;
+        
+        foreach (var cell in cells) 
+        {
+            cell.StoreItem(item);
+        }
+
+        return true;
+    }
 }

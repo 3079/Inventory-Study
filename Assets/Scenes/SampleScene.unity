@@ -273,7 +273,7 @@ GameObject:
   - component: {fileID: 502459469}
   - component: {fileID: 502459468}
   - component: {fileID: 502459467}
-  m_Layer: 6
+  m_Layer: 7
   m_Name: Cube (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -670,7 +670,7 @@ MonoBehaviour:
   _interactDistance: 20
   _interactMask:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 128
   _itemMask:
     serializedVersion: 2
     m_Bits: 64
@@ -852,7 +852,7 @@ GameObject:
   - component: {fileID: 1213597005}
   - component: {fileID: 1213597004}
   - component: {fileID: 1213597003}
-  m_Layer: 6
+  m_Layer: 7
   m_Name: Cube (2)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -947,7 +947,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1392030812}
   - component: {fileID: 1392030813}
-  m_Layer: 6
+  m_Layer: 7
   m_Name: Chest
   m_TagString: Untagged
   m_Icon: {fileID: 0}

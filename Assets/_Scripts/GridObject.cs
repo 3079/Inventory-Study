@@ -93,6 +93,7 @@ public class GridObject<T>
 
     public void GetXY(Vector3 worldPos, out int x, out int y)
     {
+        // TODO add check whether Dots are positive (position is at the front facing side of the grid object)
         var localPos = worldPos - BL;
         var projectedX = Vector3.Dot(_transform.right, localPos);
         var projectedY = Vector3.Dot(_transform.up, localPos);
